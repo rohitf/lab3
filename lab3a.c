@@ -12,6 +12,10 @@ struct ext2_super_block super;
 struct ext2_group_desc grpdes;
 const char *FILENAME = "trivial.img";
 unsigned int log_block_size = 0;
+unsigned int blocks = 0;
+
+#define BASE_OFFSET 1024; /* location of the super-block in the first group */
+#define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size);
 
 void group(){
         // GROUP
@@ -31,7 +35,7 @@ void group(){
     
     /* calculate size of the group descriptor list in bytes */
     // unsigned int num_group_desc = num_groups * sizeof(struct ext2_group_desc);
-    unsigned int grp_num = 0, blocks = 0, inode_size = 0, inodes, free_blocks, free_inodes, block_free_number, inode_free_number, first_inode_block;
+    unsigned int grp_num = 0, inode_size = 0, inodes, free_blocks, free_inodes, block_free_number, inode_free_number, first_inode_block;
     blocks = super.s_blocks_count;
     
     pread(fd, &grpdes, sizeof(grpdes), offset); // DIYU SAYS THIS COULD BE WRONG
@@ -77,7 +81,7 @@ void super_block() {
     printf("\n");
 }
 
-int is_block_free(int bno, char * bitmap) 
+int is_block_free(int bno, unsigned char * bitmap) 
 {
 	int index = 0, offset = 0; 
 	if (bno == 0)  	
@@ -86,6 +90,18 @@ int is_block_free(int bno, char * bitmap)
 	index = (bno - 1)/sizeof(char);
 	offset = (bno - 1)%sizeof(char);
 	return ((bitmap[index] & (1 << offset)) == 0);
+}
+
+void print_free_blocks()
+{
+    unsigned char bitmap[blocks/8]; /* allocate memory for the bitmap */
+    pread(fd, &bitmap, blocks/8, 1024 + (grpdes.bg_block_bitmap - 1) * 1024); /* read bitmap from disk */
+
+    for (int block = 1; block < blocks; block++)
+    {
+        printf("Block %d: %d\n", block, is_block_free(block, bitmap));
+    }
+    
 }
 
 
@@ -103,5 +119,6 @@ int main(int argc, char *argv[])
     offset += 1024;
     super_block(); //don't do recursively like Rohit did
     group();
+    print_free_blocks();
     return 0;
 }
