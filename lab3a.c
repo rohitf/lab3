@@ -12,6 +12,7 @@ struct ext2_super_block super;
 struct ext2_group_desc grpdes;
 const char *FILENAME = "trivial.img";
 unsigned int log_block_size = 0;
+unsigned int blocks_count = 0;
 
 void group(){
         // GROUP
@@ -35,6 +36,7 @@ void group(){
     blocks = super.s_blocks_count;
     
     pread(fd, &grpdes, sizeof(grpdes), offset); // DIYU SAYS THIS COULD BE WRONG
+    offset += sizeof(grpdes);
     
     grp_num = super.s_inodes_count;
     log_block_size = 1024 << super.s_log_block_size; /* calculate block size in bytes */
@@ -52,7 +54,7 @@ void group(){
 }
 
 void super_block() {
-    unsigned int inodes_count = 0, blocks_count = 0, inode_size = 0;
+    unsigned int inodes_count = 0, inode_size = 0;
 
     pread(fd, &super, sizeof(super), offset); // DIYU SAYS THIS COULD BE WRONG
     offset += sizeof(super);
@@ -88,6 +90,19 @@ int is_block_free(int bno, char * bitmap)
 	return ((bitmap[index] & (1 << offset)) == 0);
 }
 
+void print_block_bitmap(){
+    char * block_bitmap = malloc(blocks_count);
+    printf("hello");
+    pread(fd, &block_bitmap, blocks_count/8, grpdes.bg_block_bitmap); // DIYU SAYS THIS COULD BE WRONG
+    printf("hi");
+    
+    int block;
+    for (block = 1; block < blocks_count; block++)
+    {
+        printf("Block %d - %d\n", block, 0);//is_block_free(block, block_bitmap));
+    }
+    
+}
 
 void BFree()
 {
@@ -103,5 +118,6 @@ int main(int argc, char *argv[])
     offset += 1024;
     super_block(); //don't do recursively like Rohit did
     group();
+    print_block_bitmap();
     return 0;
 }
