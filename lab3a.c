@@ -13,12 +13,12 @@ int fd = 0, offset = 0;
 struct ext2_super_block super;
 struct ext2_group_desc grpdes;
 const char *FILENAME = "trivial.img";
-unsigned int log_block_size = 0;
+unsigned int log_block_size = 1024;
 unsigned int num_blocks = 0;
 unsigned int num_inodes = 0;
 int logical_byte_offset;
 const int BYTE_SIZE = 8;
-#define BASE_OFFSET 1024; /* location of the super-block in the first group */
+const int BASE_OFFSET = 1024; /* location of the super-block in the first group */
 // #define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size);
 
 void throwError(char *message, int code)
@@ -27,8 +27,32 @@ void throwError(char *message, int code)
     exit(code);
 }
 
-void group()
+// with help from https://www.epochconverter.com/programming/c
+char *get_gm_time(unsigned long epoch_s)
 {
+    char *buf = malloc(80);
+    time_t epoch = (time_t)epoch_s;
+    struct tm ts = *gmtime(&epoch);
+    strftime(buf, 80, "%m/%d/%y %H:%M:%S", &ts);
+    return buf;
+}
+
+int BLOCK_OFFSET(int block_no)
+{
+    return BASE_OFFSET + (block_no - 1) * log_block_size;
+}
+
+void print_group()
+{
+
+    /*calculate number of block groups on the disk */
+    // unsigned int num_groups = 1 + (super.s_blocks_count - 1) / super.s_blocks_per_group;
+    /* calculate size of the group descriptor list in bytes */
+    // unsigned int num_group_desc = num_groups * sizeof(struct ext2_group_desc);
+
+    pread(fd, &grpdes, sizeof(grpdes), offset); // DIYU SAYS THIS COULD BE WRONG
+    offset += sizeof(grpdes);
+
     // GROUP
     // group number (decimal, starting from zero)
     // total number of num_blocks in this group (decimal)
@@ -38,24 +62,7 @@ void group()
     // block number of free block bitmap for this group (decimal)
     // block number of free i-node bitmap for this group (decimal)
     // block number of first block of i-nodes in this group (decimal)
-
-    /*calculate number of block groups on the disk */
-    // unsigned int num_groups = 1 + (super.s_blocks_count - 1) / super.s_blocks_per_group;
-    /* calculate size of the group descriptor list in bytes */
-    // unsigned int num_group_desc = num_groups * sizeof(struct ext2_group_desc);
-
-    pread(fd, &grpdes, sizeof(grpdes), offset); // DIYU SAYS THIS COULD BE WRONG
-
-    unsigned int grp_num = 0, inode_size = 0, num_inodes, free_blocks, free_inodes, block_free_number, inode_free_number, first_inode_block;
-    num_blocks = super.s_blocks_count;
-
-    pread(fd, &grpdes, sizeof(grpdes), offset); // DIYU SAYS THIS COULD BE WRONG
-    offset += sizeof(grpdes);
-
-    grp_num = super.s_inodes_count;
-    log_block_size = 1024 << super.s_log_block_size; /* calculate block size in bytes */
-    inode_size = super.s_inode_size;
-
+    
     printf("GROUP,");
     printf("%d,", 0);
     printf("%d,", num_blocks);
@@ -67,7 +74,7 @@ void group()
     printf("%d\n", grpdes.bg_inode_table);
 }
 
-void super_block()
+void print_super_block()
 {
     unsigned int inode_size = 0;
 
@@ -97,8 +104,8 @@ void super_block()
 void print_free_blocks()
 {
     unsigned char bitmap[num_blocks / BYTE_SIZE];                                           /* allocate memory for the bitmap */
-    pread(fd, &bitmap, num_blocks / BYTE_SIZE, 1024 + (grpdes.bg_block_bitmap - 1) * 1024); /* read bitmap from disk */
-    int index = 0, offset = 0;
+    pread(fd, &bitmap, num_blocks / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_block_bitmap)); /* read bitmap from disk */
+    int index = 0;
 
     for (int block = 1; block <= num_blocks; block++)
     {
@@ -116,8 +123,8 @@ void print_free_blocks()
 void print_free_inodes()
 {
     unsigned char bitmap[num_inodes / BYTE_SIZE];                                           /* allocate memory for the bitmap */
-    pread(fd, &bitmap, num_inodes / BYTE_SIZE, 1024 + (grpdes.bg_inode_bitmap - 1) * 1024); /* read bitmap from disk */
-    int index = 0, offset = 0;
+    pread(fd, &bitmap, num_inodes / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_inode_bitmap)); /* read bitmap from disk */
+    int index = 0;
 
     for (int inode = 1; inode <= num_inodes; inode++)
     {
@@ -140,7 +147,7 @@ void print_dirents(int block, int parent_inode, int size)
     unsigned char curr_entry[sizeof(struct ext2_dir_entry)];
     struct ext2_dir_entry *entry;
 
-    lseek(fd, 1024 + (block - 1) * log_block_size, SEEK_SET);
+    lseek(fd, BLOCK_OFFSET(block), SEEK_SET);
     read(fd, curr_entry, sizeof(struct ext2_dir_entry));
     entry = (struct ext2_dir_entry *)curr_entry;
 
@@ -169,21 +176,6 @@ void print_dirents(int block, int parent_inode, int size)
         logical_byte_offset += (entry->rec_len);
         entry = (void *)entry + (entry->rec_len); /* move to the next entry */
     }
-}
-
-//with help from https://www.epochconverter.com/programming/c
-char *get_gm_time(unsigned long epoch_s)
-{
-    char *buf = malloc(80);
-    time_t epoch = (time_t)epoch_s;
-    struct tm ts = *gmtime(&epoch);
-    strftime(buf, 80, "%m/%d/%y %H:%M:%S", &ts);
-    return buf;
-}
-
-int BLOCK_OFFSET(int block_no)
-{
-    return 1024 + (block_no - 1) * log_block_size;
 }
 
 void print_indirect(int block_number, int level, int total_size, int inode_number)
@@ -220,12 +212,12 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
 void print_inodes()
 {
     /* number of inodes per block */
-    unsigned int inodes_per_block = log_block_size / sizeof(struct ext2_inode);
+    // unsigned int inodes_per_block = log_block_size / sizeof(struct ext2_inode);
     /* size in blocks of the inode table */
-    unsigned int itable_blocks = super.s_inodes_per_group / inodes_per_block;
+    // unsigned int itable_blocks = super.s_inodes_per_group / inodes_per_block;
 
     struct ext2_inode inode_list[num_inodes];
-    offset = 1024 + (grpdes.bg_inode_table - 1) * log_block_size;
+    offset = BLOCK_OFFSET(grpdes.bg_inode_table);
     pread(fd, &inode_list, sizeof(inode_list), offset); // DIYU SAYS THIS COULD BE WRONG
 
     int in;
@@ -244,9 +236,9 @@ void print_inodes()
             printf("%d,", in + 1);
             printf("d,");                              // inode #
             printf("%o,", ((curr_in.i_mode) & 0xFFF)); // mode, lower 12 bits
-            printf("%d,", curr_in.i_uid);              // Owner
-            printf("%d,", curr_in.i_gid);              // Group
-            printf("%d,", curr_in.i_links_count);      //how many links to this
+            printf("%d,", curr_in.i_uid);              // owner
+            printf("%d,", curr_in.i_gid);              // group
+            printf("%d,", curr_in.i_links_count);      // how many links to this
             printf("%s,", creat_time);                 //.tm_hour, creat_time.tm_min, creat_time.tm_sec); // Creation time
             printf("%s,", mod_time);                   //.tm_hour, mod_time.tm_min, mod_time.tm_sec); // Creation time
             printf("%s,", access_time);                //.tm_hour, access_time.tm_min, access_time.tm_sec); // Creation time
@@ -283,9 +275,9 @@ int main(int argc, char *argv[])
         throwError("Unable to open file", 1);
     }
     
-    offset += 1024;
-    super_block(); //don't do recursively like Rohit did - hahahaha
-    group();
+    offset = BASE_OFFSET;
+    print_super_block(); //don't do recursively like Rohit did - hahahaha
+    print_group();
     print_free_blocks();
     print_free_inodes();
     print_inodes();

@@ -3,3 +3,5 @@
 3. Not working on lnxsrv
 4. Only print directories or files also?
 5. Recursively parse subdirectories?
+6. Use of BYTE_SIZE
+7. Indirection implementation
