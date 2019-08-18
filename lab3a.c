@@ -20,6 +20,21 @@ int logical_byte_offset;
 const int BYTE_SIZE = 8;
 const int BASE_OFFSET = 1024; /* location of the super-block in the first group */
 
+// Function declarations
+void print_super_block();
+void print_group();
+void print_free_blocks();
+void print_free_inodes();
+void print_inodes();
+
+void print_inode_details(struct ext2_inode curr_in, int in);
+void print_dirents(int block, int parent_inode, int size);
+void print_indirect(int block_number, int level, int total_size, int inode_number);
+
+char *get_gm_time(unsigned long epoch_s);
+void throwError(char *message, int code);
+int BLOCK_OFFSET(int block_no);
+
 void throwError(char *message, int code)
 {
     fprintf(stderr, "%s\n", message);
@@ -84,7 +99,7 @@ void print_group()
     // block number of free block bitmap for this group (decimal)
     // block number of free i-node bitmap for this group (decimal)
     // block number of first block of i-nodes in this group (decimal)
-    
+
     printf("GROUP,");
     printf("%d,", 0);
     printf("%d,", num_blocks);
@@ -125,7 +140,7 @@ void print_super_block()
 
 void print_free_blocks()
 {
-    unsigned char bitmap[num_blocks / BYTE_SIZE + 1];                                           /* allocate memory for the bitmap */
+    unsigned char bitmap[num_blocks / BYTE_SIZE + 1];                                 /* allocate memory for the bitmap */
     pread(fd, &bitmap, num_blocks / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_block_bitmap)); /* read bitmap from disk */
     int index = 0;
 
@@ -144,7 +159,7 @@ void print_free_blocks()
 
 void print_free_inodes()
 {
-    unsigned char bitmap[num_inodes / BYTE_SIZE + 1];                                           /* allocate memory for the bitmap */
+    unsigned char bitmap[num_inodes / BYTE_SIZE + 1];                                 /* allocate memory for the bitmap */
     pread(fd, &bitmap, num_inodes / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_inode_bitmap)); /* read bitmap from disk */
     int index = 0;
 
@@ -216,18 +231,45 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
     {
         block = block_pointers[i];
 
-        if (block != 0){
+        if (block != 0)
+        {
             // // Print data
             printf("INDIRECT,");
             printf("%d,", inode_number);
             printf("%d,", level);
             // printf("%d,", logical_block_offset);
             printf("%d,", block_number); // level of indirection
-            printf("%d\n", block); // current block pointer
-        
+            printf("%d\n", block);       // current block pointer
+
             return print_indirect(block, level - 1, total_size, inode_number);
         }
     }
+}
+
+void print_inode_details(struct ext2_inode curr_in, int in)
+{
+    char *mod_time = get_gm_time(curr_in.i_mtime);
+    char *access_time = get_gm_time(curr_in.i_atime);
+    char *creat_time = get_gm_time(curr_in.i_ctime);
+
+    printf("INODE,");
+    printf("%d,", in + 1);
+    printf("d,");                              // inode #
+    printf("%o,", ((curr_in.i_mode) & 0xFFF)); // mode, lower 12 bits
+    printf("%d,", curr_in.i_uid);              // owner
+    printf("%d,", curr_in.i_gid);              // group
+    printf("%d,", curr_in.i_links_count);      // how many links to this
+    printf("%s,", creat_time);                 //.tm_hour, creat_time.tm_min, creat_time.tm_sec); // Creation time
+    printf("%s,", mod_time);                   //.tm_hour, mod_time.tm_min, mod_time.tm_sec); // Creation time
+    printf("%s,", access_time);                //.tm_hour, access_time.tm_min, access_time.tm_sec); // Creation time
+    printf("%d,", curr_in.i_size);
+    printf("%d,", curr_in.i_blocks);
+
+    int i;
+    for (i = 0; i < EXT2_N_BLOCKS - 1; i++)
+        printf("%d,", curr_in.i_block[i]);
+
+    printf("%d\n", curr_in.i_block[EXT2_N_BLOCKS - 1]);
 }
 
 void print_inodes()
@@ -241,46 +283,28 @@ void print_inodes()
     offset = BLOCK_OFFSET(grpdes.bg_inode_table);
     pread(fd, &inode_list, sizeof(inode_list), offset); // DIYU SAYS THIS COULD BE WRONG
 
-    int in;
-    for (in = 0; in < num_inodes; in++)
+    int inode_no;
+    for (inode_no = 0; inode_no < num_inodes; inode_no++)
     {
-        logical_byte_offset = 0;
-        struct ext2_inode curr_in = inode_list[in];
+        logical_byte_offset = 0; // reset this here
+        struct ext2_inode curr_in = inode_list[inode_no];
 
-        char *mod_time = get_gm_time(curr_in.i_mtime);
-        char *access_time = get_gm_time(curr_in.i_atime);
-        char *creat_time = get_gm_time(curr_in.i_ctime);
-
-        if (S_ISDIR(curr_in.i_mode) && curr_in.i_links_count > 0)
+        if (S_ISREG(curr_in.i_mode) && curr_in.i_links_count > 0)
         {
-            printf("INODE,");
-            printf("%d,", in + 1);
-            printf("d,");                              // inode #
-            printf("%o,", ((curr_in.i_mode) & 0xFFF)); // mode, lower 12 bits
-            printf("%d,", curr_in.i_uid);              // owner
-            printf("%d,", curr_in.i_gid);              // group
-            printf("%d,", curr_in.i_links_count);      // how many links to this
-            printf("%s,", creat_time);                 //.tm_hour, creat_time.tm_min, creat_time.tm_sec); // Creation time
-            printf("%s,", mod_time);                   //.tm_hour, mod_time.tm_min, mod_time.tm_sec); // Creation time
-            printf("%s,", access_time);                //.tm_hour, access_time.tm_min, access_time.tm_sec); // Creation time
-            printf("%d,", curr_in.i_size);
-            printf("%d,", curr_in.i_blocks);
+            print_inode_details(curr_in, inode_no);
+        }
+        else if (S_ISDIR(curr_in.i_mode) && curr_in.i_links_count > 0) // if directory
+        {
+            print_inode_details(curr_in, inode_no);
 
-            int i;
-            for (i = 0; i < EXT2_N_BLOCKS - 1; i++)
-                printf("%d,", curr_in.i_block[i]);
-
-            printf("%d\n", curr_in.i_block[EXT2_N_BLOCKS - 1]);
-
-            int level = 0;
+            int i, level = 0;
             for (i = 0; i < EXT2_N_BLOCKS; i++)
             {
                 if (i >= 12)
                     level++;
                 int block_no = curr_in.i_block[i];
-                print_indirect(block_no, level, curr_in.i_size, in + 1);
+                print_indirect(block_no, level, curr_in.i_size, inode_no + 1);
             }
         }
     }
 }
-
