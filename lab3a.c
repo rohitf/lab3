@@ -16,10 +16,11 @@ const char *FILENAME = "trivial.img";
 unsigned int log_block_size = 0;
 unsigned int num_blocks = 0;
 unsigned int num_inodes = 0;
+int logical_byte_offset = 0;
 
 const int BYTE_SIZE = 8;
 #define BASE_OFFSET 1024; /* location of the super-block in the first group */
-#define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size);
+// #define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size);
 
 void group()
 {
@@ -126,57 +127,43 @@ void print_free_inodes()
     }
 }
 
-void print_dirent(struct ext2_inode *curr_in, int curr_no)
+void print_dirents(int block, int parent_inode, int size)
 {
-    // struct ext2_dir_entry *entry;
-    // long address = (curr_in->i_block)[curr_no - 1];
-    // unsigned char block[BLOCK_SIZE];
-    // pread(fd, &entry, sizeof(struct ext2_dir_entry), 1024 + ((address - 1) * log_block_size));
+    if (block == 0)
+        return; // Unallocated block
 
+    unsigned char curr_entry[sizeof(struct ext2_dir_entry)];
     struct ext2_dir_entry *entry;
-    
-    for (int i = 0; i < 12; i++)
+
+    lseek(fd, 1024 + (block - 1) * log_block_size, SEEK_SET);
+    read(fd, curr_entry, sizeof(struct ext2_dir_entry));
+    entry = (struct ext2_dir_entry *)curr_entry;
+
+    if (entry->inode == 0)
+        return;
+
+    while (logical_byte_offset < size) // offset is less than the total size of the inode
     {
+        // pread(fd, block, log_block_size, (1024 + (address - 1) * log_block_size));
 
-        int logical_byte_offset = 0;
-        long address = curr_in->i_block[i];
-
-        if (address == 0) break; // Unallocated block
-
-        unsigned char curr_entry[sizeof(struct ext2_dir_entry)];
-        
-        lseek(fd, 1024 + (address - 1) * log_block_size, SEEK_SET);
-        read(fd, curr_entry, sizeof(struct ext2_dir_entry));
-        entry = (struct ext2_dir_entry *) curr_entry;
-
-        if(entry->inode == 0)
+        if (entry->rec_len == 0)
             break;
 
-        while (logical_byte_offset < (curr_in->i_size)) //size is less than the total size of the inode
-        {
-            // pread(fd, block, log_block_size, (1024 + (address - 1) * log_block_size));
+        char file_name[EXT2_NAME_LEN + 1];
+        memcpy(file_name, entry->name, entry->name_len);
+        file_name[entry->name_len] = 0; /* append null char to the file name */
 
-            if(entry->rec_len == 0)
-                break;
+        printf("DIRENT,");
+        printf("%d,", parent_inode);
+        printf("%d,", logical_byte_offset);
+        printf("%d,", entry->inode);
+        printf("%d,", entry->rec_len);
+        printf("%d,", entry->name_len);
+        printf("\'%s\'\n", entry->name);
 
-            char file_name[EXT2_NAME_LEN + 1];
-            memcpy(file_name, entry->name, entry->name_len);
-            file_name[entry->name_len] = 0; /* append null char to the file name */
-
-            printf("DIRENT,");
-            printf("%d,", curr_no + 1);
-            printf("%d,", logical_byte_offset);
-            printf("%d,", entry->inode);
-            printf("%d,", entry->rec_len);
-            printf("%d,", entry->name_len);
-            printf("\'%s\'\n", entry->name);
-
-            logical_byte_offset += (entry->rec_len);
-            entry = (void *)entry + (entry->rec_len); /* move to the next entry */
-        }
+        logical_byte_offset += (entry->rec_len);
+        entry = (void *)entry + (entry->rec_len); /* move to the next entry */
     }
-
-    return;
 }
 
 //with help from https://www.epochconverter.com/programming/c
@@ -187,6 +174,42 @@ char *get_gm_time(unsigned long epoch_s)
     struct tm ts = *gmtime(&epoch);
     strftime(buf, 80, "%m/%d/%y %H:%M:%S", &ts);
     return buf;
+}
+
+int BLOCK_OFFSET(int block_no)
+{
+    return 1024 + (block_no - 1) * log_block_size;
+}
+
+void print_indirect(int block_number, int level, int total_size, int inode_number)
+{
+    if (level == 0)
+    {
+        return print_dirents(block_number, inode_number, total_size);
+    }
+
+    int num_pointers = log_block_size / sizeof(int);
+    int block_pointers[num_pointers];
+    pread(fd, &block_pointers, log_block_size, BLOCK_OFFSET(block_number));
+
+
+    int i, block;
+    for (i = 0; i < num_pointers; i++)
+    {
+        block = block_pointers[i];
+
+        if (block != 0){
+            // // Print data
+            printf("INDIRECT,");
+            printf("%d,", inode_number);
+            printf("%d,", level);
+            // printf("%d,", logical_block_offset);
+            printf("%d,", block_number); // level of indirection
+            printf("%d\n", block); // current block pointer
+        
+            return print_indirect(block, level - 1, total_size, inode_number);
+        }
+    }
 }
 
 void print_inodes()
@@ -209,7 +232,7 @@ void print_inodes()
         char *access_time = get_gm_time(curr_in.i_atime);
         char *creat_time = get_gm_time(curr_in.i_ctime);
 
-        if (S_ISDIR(curr_in.i_mode))
+        if (S_ISDIR(curr_in.i_mode) && curr_in.i_links_count > 0)
         {
             printf("INODE,");
             printf("%d,", in + 1);
@@ -230,7 +253,14 @@ void print_inodes()
 
             printf("%d\n", curr_in.i_block[EXT2_N_BLOCKS - 1]);
 
-            print_dirent(&curr_in, in);
+            int level = 0;
+            for (i = 0; i < EXT2_N_BLOCKS; i++)
+            {
+                if (i >= 12)
+                    level++;
+                int block_no = curr_in.i_block[i];
+                print_indirect(block_no, level, curr_in.i_size, in + 1);
+            }
         }
     }
 }
