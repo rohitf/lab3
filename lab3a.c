@@ -126,64 +126,95 @@ void print_free_inodes()
     }
 }
 
-//with help from https://www.epochconverter.com/programming/c
-char* get_gm_time(unsigned long epoch_s)
+
+void print_dirent(struct ext2_inode * curr_in, int curr_no)
 {
-    char * buf = malloc(80);
-    time_t epoch = (time_t)epoch_s;    
+    struct ext2_dir_entry *entry = (struct ext2_dir_entry *) (curr_in->i_block[curr_no]);          
+    int dirsize = 0;
+    int j = 0;
+    while(dirsize < curr_in->i_size)     //size is less than the total size of the inode
+    {
+        char file_name[EXT2_NAME_LEN+1];
+        memcpy(file_name, entry->name, entry->name_len);
+        file_name[entry->name_len] = 0;              /* append null char to the file name */
+        
+        printf("DIRENT,");
+        printf("%d,", j);
+        printf("%d,", dirsize);
+        printf("%d,", entry->inode);
+        printf("%d,", entry->rec_len);
+        printf("%d,", entry->name_len);
+        printf("\'%s\'\n", entry->name);
+
+        entry = (void*) entry + entry->rec_len;      /* move to the next entry */
+        dirsize += entry->rec_len;
+        j++;
+    }
+
+}
+
+//with help from https://www.epochconverter.com/programming/c
+char *get_gm_time(unsigned long epoch_s)
+{
+    char *buf = malloc(80);
+    time_t epoch = (time_t)epoch_s;
     struct tm ts = *gmtime(&epoch);
     strftime(buf, 80, "%m/%d/%y %H:%M:%S", &ts);
     return buf;
 }
 
-void print_inodes(){
+void print_inodes()
+{
     /* number of inodes per block */
     unsigned int inodes_per_block = log_block_size / sizeof(struct ext2_inode);
     /* size in blocks of the inode table */
     unsigned int itable_blocks = super.s_inodes_per_group / inodes_per_block;
 
     struct ext2_inode inode_list[num_inodes];
-    offset = 1024 + (grpdes.bg_inode_table - 1) * log_block_size; 
+    offset = 1024 + (grpdes.bg_inode_table - 1) * log_block_size;
     pread(fd, &inode_list, sizeof(inode_list), offset); // DIYU SAYS THIS COULD BE WRONG
 
     int in;
-    for(in=0; in < num_inodes; in++)
+    for (in = 0; in < num_inodes; in++)
     {
         struct ext2_inode curr_in = inode_list[in];
-        
-        char* mod_time = get_gm_time(curr_in.i_mtime);
-        char* access_time = get_gm_time(curr_in.i_atime);
+
+        char *mod_time = get_gm_time(curr_in.i_mtime);
+        char *access_time = get_gm_time(curr_in.i_atime);
         char *creat_time = get_gm_time(curr_in.i_ctime);
 
         if (S_ISDIR(curr_in.i_mode))
         {
             printf("INODE,");
-            printf("%d,", in+1);
-            printf("d,"); // inode #
+            printf("%d,", in + 1);
+            printf("d,");                              // inode #
             printf("%o,", ((curr_in.i_mode) & 0xFFF)); // mode, lower 12 bits
-            printf("%d,", curr_in.i_uid);  // Owner
-            printf("%d,", curr_in.i_gid);  // Group
-            printf("%d,", curr_in.i_links_count); //how many links to this
-            printf("%s,", creat_time);//.tm_hour, creat_time.tm_min, creat_time.tm_sec); // Creation time
-            printf("%s,", mod_time);//.tm_hour, mod_time.tm_min, mod_time.tm_sec); // Creation time
-            printf("%s,", access_time);//.tm_hour, access_time.tm_min, access_time.tm_sec); // Creation time
-            printf("%d,\n", curr_in.i_size);
-            printf("%d,\n", curr_in.i_blocks);
-            for (int i = 0; i < EXT2_N_BLOCKS - 1; i++)
-            {
+            printf("%d,", curr_in.i_uid);              // Owner
+            printf("%d,", curr_in.i_gid);              // Group
+            printf("%d,", curr_in.i_links_count);      //how many links to this
+            printf("%s,", creat_time);                 //.tm_hour, creat_time.tm_min, creat_time.tm_sec); // Creation time
+            printf("%s,", mod_time);                   //.tm_hour, mod_time.tm_min, mod_time.tm_sec); // Creation time
+            printf("%s,", access_time);                //.tm_hour, access_time.tm_min, access_time.tm_sec); // Creation time
+            printf("%d,", curr_in.i_size);
+            printf("%d,", curr_in.i_blocks);
+
+            int i;
+            for (i = 0; i < EXT2_N_BLOCKS - 1; i++)
                 printf("%d,", curr_in.i_block[i]);
-            }
-            
-            printf("%d", curr_in.i_block[EXT2_N_BLOCKS - 1]);
+
+            printf("%d\n", curr_in.i_block[EXT2_N_BLOCKS - 1]);
         }
+
+        print_dirent(&curr_in, in);
     }
 }
+
 
 int main(int argc, char *argv[])
 {
     fd = open(FILENAME, O_RDONLY);
     offset += 1024;
-    super_block(); //don't do recursively like Rohit did
+    super_block(); //don't do recursively like Rohit did - hahahaha
     group();
     print_free_blocks();
     print_free_inodes();
