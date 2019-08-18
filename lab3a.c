@@ -16,8 +16,7 @@ const char *FILENAME = "trivial.img";
 unsigned int log_block_size = 0;
 unsigned int num_blocks = 0;
 unsigned int num_inodes = 0;
-int logical_byte_offset = 0;
-
+int logical_byte_offset;
 const int BYTE_SIZE = 8;
 #define BASE_OFFSET 1024; /* location of the super-block in the first group */
 // #define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size);
@@ -41,12 +40,12 @@ void group()
     // block number of first block of i-nodes in this group (decimal)
 
     /*calculate number of block groups on the disk */
-    unsigned int num_groups = 1 + (super.s_blocks_count - 1) / super.s_blocks_per_group;
+    // unsigned int num_groups = 1 + (super.s_blocks_count - 1) / super.s_blocks_per_group;
+    /* calculate size of the group descriptor list in bytes */
+    // unsigned int num_group_desc = num_groups * sizeof(struct ext2_group_desc);
 
     pread(fd, &grpdes, sizeof(grpdes), offset); // DIYU SAYS THIS COULD BE WRONG
 
-    /* calculate size of the group descriptor list in bytes */
-    // unsigned int num_group_desc = num_groups * sizeof(struct ext2_group_desc);
     unsigned int grp_num = 0, inode_size = 0, num_inodes, free_blocks, free_inodes, block_free_number, inode_free_number, first_inode_block;
     num_blocks = super.s_blocks_count;
 
@@ -232,6 +231,7 @@ void print_inodes()
     int in;
     for (in = 0; in < num_inodes; in++)
     {
+        logical_byte_offset = 0;
         struct ext2_inode curr_in = inode_list[in];
 
         char *mod_time = get_gm_time(curr_in.i_mtime);
