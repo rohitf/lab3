@@ -181,37 +181,37 @@ void print_dirents(int block, int parent_inode, int size)
     if (block == 0)
         return; // Unallocated block
 
-    unsigned char curr_entry[sizeof(struct ext2_dir_entry)];
-    struct ext2_dir_entry *entry;
+    unsigned char entry[sizeof(struct ext2_dir_entry)];
+    struct ext2_dir_entry *curr_entry;
 
     lseek(fd, BLOCK_OFFSET(block), SEEK_SET);
-    read(fd, curr_entry, sizeof(struct ext2_dir_entry));
-    entry = (struct ext2_dir_entry *)curr_entry;
+    read(fd, entry, sizeof(struct ext2_dir_entry));
+    curr_entry = (struct ext2_dir_entry *)entry;
 
-    if (entry->inode == 0)
+    if (curr_entry->inode == 0)
         return;
 
     while (logical_byte_offset < size) // offset is less than the total size of the inode
     {
         // pread(fd, block, log_block_size, (1024 + (address - 1) * log_block_size));
 
-        if (entry->rec_len == 0)
+        if (curr_entry->rec_len == 0)
             break;
 
         char file_name[EXT2_NAME_LEN + 1];
-        memcpy(file_name, entry->name, entry->name_len);
-        file_name[entry->name_len] = 0; /* append null char to the file name */
+        memcpy(file_name, curr_entry->name, curr_entry->name_len);
+        file_name[curr_entry->name_len] = 0; /* append null char to the file name */
 
         printf("DIRENT,");
         printf("%d,", parent_inode);
         printf("%d,", logical_byte_offset);
-        printf("%d,", entry->inode);
-        printf("%d,", entry->rec_len);
-        printf("%d,", entry->name_len);
-        printf("\'%s\'\n", entry->name);
+        printf("%d,", curr_entry->inode);
+        printf("%d,", curr_entry->rec_len);
+        printf("%d,", curr_entry->name_len);
+        printf("\'%s\'\n", curr_entry->name);
 
-        logical_byte_offset += (entry->rec_len);
-        entry = (void *)entry + (entry->rec_len); /* move to the next entry */
+        logical_byte_offset += (curr_entry->rec_len);
+        curr_entry = (void *)curr_entry + (curr_entry->rec_len); /* move to the next curr_entry */
     }
 }
 
