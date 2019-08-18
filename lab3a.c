@@ -180,6 +180,7 @@ void print_free_inodes()
     }
 }
 
+// goes to data block and prints directory entries within that 1 block
 void print_dirents(int block, int inode_number)
 {
     unsigned char entries[log_block_size];
@@ -194,7 +195,7 @@ void print_dirents(int block, int inode_number)
     curr_entry = (struct ext2_dir_entry *)entries;
     int entry_offset = 0;
     
-    while(entry_offset < log_block_size)     //size is less than the total size of the inode
+    while((unsigned int)entry_offset < log_block_size)     //size is less than the total size of the inode
     {
         if(curr_entry->inode == 0)
             break;
@@ -238,7 +239,7 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
             printf("INDIRECT,");
             printf("%d,", inode_number);
             printf("%d,", level);
-            // printf("%d,", logical_block_offset);
+            printf("%d,", block*log_block_size);
             printf("%d,", block_number); // level of indirection
             printf("%d\n", block);       // current block pointer
 
