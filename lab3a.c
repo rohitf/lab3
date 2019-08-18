@@ -129,26 +129,37 @@ void print_free_inodes()
 
 void print_dirent(struct ext2_inode * curr_in, int curr_no)
 {
-    struct ext2_dir_entry *entry = (struct ext2_dir_entry *) (curr_in->i_block[curr_no]);          
-    int dirsize = 0;
-    int j = 0;
-    while(dirsize < curr_in->i_size)     //size is less than the total size of the inode
+    // struct ext2_dir_entry *entry;
+    // long address = (curr_in->i_block)[curr_no - 1];
+    // unsigned char block[BLOCK_SIZE];
+    // pread(fd, &entry, sizeof(struct ext2_dir_entry), 1024 + ((address - 1) * log_block_size));
+
+    struct ext2_dir_entry *entry;
+    unsigned int size;
+    unsigned char block[log_block_size];
+    long address = curr_in->i_block[0];
+    lseek(fd, 1024 + (address - 1) * log_block_size, SEEK_SET);
+    read(fd, block, log_block_size);
+    // pread(fd, block, log_block_size, (1024 + (address - 1) * log_block_size));
+    entry = (struct ext2_dir_entry *) block;
+
+    int logical_byte_offset = 0;
+    while(logical_byte_offset < (curr_in->i_size))     //size is less than the total size of the inode
     {
         char file_name[EXT2_NAME_LEN+1];
         memcpy(file_name, entry->name, entry->name_len);
         file_name[entry->name_len] = 0;              /* append null char to the file name */
-        
+
         printf("DIRENT,");
-        printf("%d,", j);
-        printf("%d,", dirsize);
+        printf("%d,", curr_no+1);
+        printf("%d,", logical_byte_offset);
         printf("%d,", entry->inode);
         printf("%d,", entry->rec_len);
         printf("%d,", entry->name_len);
         printf("\'%s\'\n", entry->name);
-
-        entry = (void*) entry + entry->rec_len;      /* move to the next entry */
-        dirsize += entry->rec_len;
-        j++;
+        
+        entry = (void*) entry + (entry->rec_len);      /* move to the next entry */
+        logical_byte_offset += (entry->rec_len);
     }
 
 }
@@ -197,15 +208,17 @@ void print_inodes()
             printf("%s,", access_time);                //.tm_hour, access_time.tm_min, access_time.tm_sec); // Creation time
             printf("%d,", curr_in.i_size);
             printf("%d,", curr_in.i_blocks);
-
+            
             int i;
             for (i = 0; i < EXT2_N_BLOCKS - 1; i++)
                 printf("%d,", curr_in.i_block[i]);
 
             printf("%d\n", curr_in.i_block[EXT2_N_BLOCKS - 1]);
+
+            print_dirent(&curr_in, in);
         }
 
-        print_dirent(&curr_in, in);
+        
     }
 }
 
