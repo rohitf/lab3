@@ -22,6 +22,12 @@ const int BYTE_SIZE = 8;
 #define BASE_OFFSET 1024; /* location of the super-block in the first group */
 // #define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size);
 
+void throwError(char *message, int code)
+{
+    fprintf(stderr, "%s\n", message);
+    exit(code);
+}
+
 void group()
 {
     // GROUP
@@ -268,6 +274,15 @@ void print_inodes()
 int main(int argc, char *argv[])
 {
     fd = open(FILENAME, O_RDONLY);
+    if (argc != 2){
+        throwError("Wrong number of arguments", 1);
+    }
+
+    FILENAME = argv[1];
+    if ((fd = open(FILENAME, O_RDONLY)) == -1){
+        throwError("Unable to open file", 1);
+    }
+    
     offset += 1024;
     super_block(); //don't do recursively like Rohit did - hahahaha
     group();
