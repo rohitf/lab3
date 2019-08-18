@@ -146,9 +146,9 @@ void print_free_blocks()
 {
     unsigned char bitmap[num_blocks / BYTE_SIZE + 1];                                 /* allocate memory for the bitmap */
     pread(fd, &bitmap, num_blocks / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_block_bitmap)); /* read bitmap from disk */
-    int index = 0;
 
-    for (int block = 1; block <= num_blocks; block++)
+    int index = 0, block;
+    for (block = 1; (unsigned int)block <= num_blocks; block++)
     {
         if (block == 0)
             return;
@@ -165,18 +165,18 @@ void print_free_inodes()
 {
     unsigned char bitmap[num_inodes / BYTE_SIZE + 1];                                 /* allocate memory for the bitmap */
     pread(fd, &bitmap, num_inodes / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_inode_bitmap)); /* read bitmap from disk */
-    int index = 0;
 
-    for (int inode = 1; inode <= num_inodes; inode++)
+    int index = 0, inode_no;
+    for (inode_no = 1; (unsigned int)inode_no <= num_inodes; inode_no++)
     {
-        if (inode == 0)
+        if (inode_no == 0)
             return;
 
-        index = (inode - 1) / BYTE_SIZE;
-        offset = (inode - 1) % BYTE_SIZE;
+        index = (inode_no - 1) / BYTE_SIZE;
+        offset = (inode_no - 1) % BYTE_SIZE;
         bool is_free = ((bitmap[index] & (1 << offset)) == 0);
         if (is_free)
-            printf("IFREE,%d\n", inode);
+            printf("IFREE,%d\n", inode_no);
     }
 }
 
@@ -288,7 +288,7 @@ void print_inodes()
     pread(fd, &inode_list, sizeof(inode_list), offset); // DIYU SAYS THIS COULD BE WRONG
 
     int inode_no;
-    for (inode_no = 0; inode_no < num_inodes; inode_no++)
+    for (inode_no = 0; (unsigned int)inode_no < num_inodes; inode_no++)
     {
         logical_byte_offset = 0; // reset this here
         struct ext2_inode curr_in = inode_list[inode_no];
