@@ -168,6 +168,13 @@ void print_inodes(){
             printf("%s,", mod_time);//.tm_hour, mod_time.tm_min, mod_time.tm_sec); // Creation time
             printf("%s,", access_time);//.tm_hour, access_time.tm_min, access_time.tm_sec); // Creation time
             printf("%d,\n", curr_in.i_size);
+            printf("%d,\n", curr_in.i_blocks);
+            for (int i = 0; i < EXT2_N_BLOCKS - 1; i++)
+            {
+                printf("%d,", curr_in.i_block[i]);
+            }
+            
+            printf("%d", curr_in.i_block[EXT2_N_BLOCKS - 1]);
         }
     }
 }
