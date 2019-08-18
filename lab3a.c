@@ -126,8 +126,7 @@ void print_free_inodes()
     }
 }
 
-
-void print_dirent(struct ext2_inode * curr_in, int curr_no)
+void print_dirent(struct ext2_inode *curr_in, int curr_no)
 {
     // struct ext2_dir_entry *entry;
     // long address = (curr_in->i_block)[curr_no - 1];
@@ -135,33 +134,49 @@ void print_dirent(struct ext2_inode * curr_in, int curr_no)
     // pread(fd, &entry, sizeof(struct ext2_dir_entry), 1024 + ((address - 1) * log_block_size));
 
     struct ext2_dir_entry *entry;
-    unsigned int size;
-    unsigned char block[log_block_size];
-    long address = curr_in->i_block[0];
-    lseek(fd, 1024 + (address - 1) * log_block_size, SEEK_SET);
-    read(fd, block, log_block_size);
-    // pread(fd, block, log_block_size, (1024 + (address - 1) * log_block_size));
-    entry = (struct ext2_dir_entry *) block;
-
-    int logical_byte_offset = 0;
-    while(logical_byte_offset < (curr_in->i_size))     //size is less than the total size of the inode
+    
+    for (int i = 0; i < 12; i++)
     {
-        char file_name[EXT2_NAME_LEN+1];
-        memcpy(file_name, entry->name, entry->name_len);
-        file_name[entry->name_len] = 0;              /* append null char to the file name */
 
-        printf("DIRENT,");
-        printf("%d,", curr_no+1);
-        printf("%d,", logical_byte_offset);
-        printf("%d,", entry->inode);
-        printf("%d,", entry->rec_len);
-        printf("%d,", entry->name_len);
-        printf("\'%s\'\n", entry->name);
+        int logical_byte_offset = 0;
+        long address = curr_in->i_block[i];
+
+        if (address == 0) break; // Unallocated block
+
+        unsigned char curr_entry[sizeof(struct ext2_dir_entry)];
         
-        entry = (void*) entry + (entry->rec_len);      /* move to the next entry */
-        logical_byte_offset += (entry->rec_len);
+        lseek(fd, 1024 + (address - 1) * log_block_size, SEEK_SET);
+        read(fd, curr_entry, sizeof(struct ext2_dir_entry));
+        entry = (struct ext2_dir_entry *) curr_entry;
+
+        if(entry->inode == 0)
+            break;
+
+        while (logical_byte_offset < (curr_in->i_size)) //size is less than the total size of the inode
+        {
+            // pread(fd, block, log_block_size, (1024 + (address - 1) * log_block_size));
+
+            if(entry->rec_len == 0)
+                break;
+
+            char file_name[EXT2_NAME_LEN + 1];
+            memcpy(file_name, entry->name, entry->name_len);
+            file_name[entry->name_len] = 0; /* append null char to the file name */
+
+            printf("DIRENT,");
+            printf("%d,", curr_no + 1);
+            printf("%d,", logical_byte_offset);
+            printf("%d,", entry->inode);
+            printf("%d,", entry->rec_len);
+            printf("%d,", entry->name_len);
+            printf("\'%s\'\n", entry->name);
+
+            logical_byte_offset += (entry->rec_len);
+            entry = (void *)entry + (entry->rec_len); /* move to the next entry */
+        }
     }
 
+    return;
 }
 
 //with help from https://www.epochconverter.com/programming/c
@@ -208,7 +223,7 @@ void print_inodes()
             printf("%s,", access_time);                //.tm_hour, access_time.tm_min, access_time.tm_sec); // Creation time
             printf("%d,", curr_in.i_size);
             printf("%d,", curr_in.i_blocks);
-            
+
             int i;
             for (i = 0; i < EXT2_N_BLOCKS - 1; i++)
                 printf("%d,", curr_in.i_block[i]);
@@ -217,11 +232,8 @@ void print_inodes()
 
             print_dirent(&curr_in, in);
         }
-
-        
     }
 }
-
 
 int main(int argc, char *argv[])
 {
