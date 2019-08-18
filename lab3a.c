@@ -28,7 +28,7 @@ void print_free_inodes();
 void print_inodes();
 
 void print_inode_details(struct ext2_inode curr_in, int in);
-void print_dirents(int block, int parent_inode, int size);
+void print_dirents(int block, int parent_inode);
 void print_indirect(int block_number, int level, int total_size, int inode_number);
 
 char *get_gm_time(unsigned long epoch_s);
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 
     offset = BASE_OFFSET;
     FILENAME = argv[1];
-    
+
     if ((fd = open(FILENAME, O_RDONLY)) == -1)
     {
         throwError("Unable to open file", 1);
@@ -180,42 +180,39 @@ void print_free_inodes()
     }
 }
 
-void print_dirents(int block, int parent_inode, int size)
+void print_dirents(int block, int inode_number)
 {
+    unsigned char entries[log_block_size];
+    struct ext2_dir_entry *curr_entry;
+
     if (block == 0)
         return; // Unallocated block
 
-    unsigned char entry[sizeof(struct ext2_dir_entry)];
-    struct ext2_dir_entry *curr_entry;
-
-    lseek(fd, BLOCK_OFFSET(block), SEEK_SET);
-    read(fd, entry, sizeof(struct ext2_dir_entry));
-    curr_entry = (struct ext2_dir_entry *)entry;
-
-    if (curr_entry->inode == 0)
-        return;
-
-    while (logical_byte_offset < size) // offset is less than the total size of the inode
+        lseek(fd, BLOCK_OFFSET(block), SEEK_SET);
+    read(fd, entries, log_block_size);
+    
+    curr_entry = (struct ext2_dir_entry *)entries;
+    int entry_offset = 0;
+    
+    while(entry_offset < log_block_size)     //size is less than the total size of the inode
     {
-        // pread(fd, block, log_block_size, (1024 + (address - 1) * log_block_size));
-
-        if (curr_entry->rec_len == 0)
+        if(curr_entry->inode == 0)
             break;
 
-        char file_name[EXT2_NAME_LEN + 1];
+        char file_name[EXT2_NAME_LEN+1];
         memcpy(file_name, curr_entry->name, curr_entry->name_len);
-        file_name[curr_entry->name_len] = 0; /* append null char to the file name */
+        file_name[curr_entry->name_len] = 0;              /* append null char to the file name */
 
         printf("DIRENT,");
-        printf("%d,", parent_inode);
-        printf("%d,", logical_byte_offset);
+        printf("%d,", inode_number);
+        printf("%d,", entry_offset);
         printf("%d,", curr_entry->inode);
         printf("%d,", curr_entry->rec_len);
         printf("%d,", curr_entry->name_len);
         printf("\'%s\'\n", curr_entry->name);
 
-        logical_byte_offset += (curr_entry->rec_len);
-        curr_entry = (void *)curr_entry + (curr_entry->rec_len); /* move to the next curr_entry */
+        curr_entry = (void*) curr_entry + curr_entry->rec_len;      /* move to the next curr_entry */
+        entry_offset += curr_entry->rec_len;
     }
 }
 
@@ -223,7 +220,7 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
 {
     if (level == 0)
     {
-        return print_dirents(block_number, inode_number, total_size);
+        return print_dirents(block_number, inode_number);
     }
 
     int num_pointers = log_block_size / sizeof(int);
