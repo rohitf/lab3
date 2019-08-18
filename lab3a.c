@@ -103,7 +103,7 @@ void print_super_block()
 
 void print_free_blocks()
 {
-    unsigned char bitmap[num_blocks / BYTE_SIZE];                                           /* allocate memory for the bitmap */
+    unsigned char bitmap[num_blocks / BYTE_SIZE + 1];                                           /* allocate memory for the bitmap */
     pread(fd, &bitmap, num_blocks / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_block_bitmap)); /* read bitmap from disk */
     int index = 0;
 
@@ -122,7 +122,7 @@ void print_free_blocks()
 
 void print_free_inodes()
 {
-    unsigned char bitmap[num_inodes / BYTE_SIZE];                                           /* allocate memory for the bitmap */
+    unsigned char bitmap[num_inodes / BYTE_SIZE + 1];                                           /* allocate memory for the bitmap */
     pread(fd, &bitmap, num_inodes / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_inode_bitmap)); /* read bitmap from disk */
     int index = 0;
 
@@ -187,8 +187,7 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
 
     int num_pointers = log_block_size / sizeof(int);
     int block_pointers[num_pointers];
-    pread(fd, &block_pointers, log_block_size, BLOCK_OFFSET(block_number));
-
+    pread(fd, &block_pointers, sizeof(block_pointers), BLOCK_OFFSET(block_number));
 
     int i, block;
     for (i = 0; i < num_pointers; i++)

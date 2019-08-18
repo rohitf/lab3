@@ -5,3 +5,4 @@
 5. Recursively parse subdirectories?
 6. Use of BYTE_SIZE
 7. Indirection implementation
+8. Weird block sizes (that aren't power of 2)? - any rounding? ceil/truncate
