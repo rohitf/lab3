@@ -60,13 +60,13 @@ int BLOCK_OFFSET(int block_no)
 // MAIN
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
-    {
-        throwError("Wrong number of arguments", 1);
-    }
+    // if (argc != 2)
+    // {
+    //     throwError("Wrong number of arguments", 1);
+    // }
+    // FILENAME = argv[1];
 
     offset = BASE_OFFSET;
-    FILENAME = argv[1];
 
     if ((fd = open(FILENAME, O_RDONLY)) == -1)
     {
@@ -211,9 +211,8 @@ void print_dirents(int block, int inode_number)
         printf("%d,", curr_entry->rec_len);
         printf("%d,", curr_entry->name_len);
         printf("\'%s\'\n", curr_entry->name);
-
-        curr_entry = (void*) curr_entry + curr_entry->rec_len;      /* move to the next curr_entry */
         entry_offset += curr_entry->rec_len;
+        curr_entry = (void*) curr_entry + curr_entry->rec_len;      /* move to the next curr_entry */
     }
 }
 

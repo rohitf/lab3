@@ -8,3 +8,4 @@
 8. Weird block sizes (that aren't power of 2)? - any rounding? ceil/truncate
 9. What to do with files?
 10.Symlinks?
+11. pread returns too less size
