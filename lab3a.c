@@ -19,7 +19,6 @@ unsigned int num_inodes = 0;
 int logical_byte_offset;
 const int BYTE_SIZE = 8;
 const int BASE_OFFSET = 1024; /* location of the super-block in the first group */
-// #define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size);
 
 void throwError(char *message, int code)
 {
@@ -40,6 +39,29 @@ char *get_gm_time(unsigned long epoch_s)
 int BLOCK_OFFSET(int block_no)
 {
     return BASE_OFFSET + (block_no - 1) * log_block_size;
+}
+
+int main(int argc, char *argv[])
+{
+    fd = open(FILENAME, O_RDONLY);
+    if (argc != 2)
+    {
+        throwError("Wrong number of arguments", 1);
+    }
+
+    FILENAME = argv[1];
+    if ((fd = open(FILENAME, O_RDONLY)) == -1)
+    {
+        throwError("Unable to open file", 1);
+    }
+
+    offset = BASE_OFFSET;
+    print_super_block(); //don't do recursively like Rohit did - hahahaha
+    print_group();
+    print_free_blocks();
+    print_free_inodes();
+    print_inodes();
+    return 0;
 }
 
 void print_group()
@@ -103,7 +125,7 @@ void print_super_block()
 
 void print_free_blocks()
 {
-    unsigned char bitmap[num_blocks / BYTE_SIZE];                                           /* allocate memory for the bitmap */
+    unsigned char bitmap[num_blocks / BYTE_SIZE + 1];                                           /* allocate memory for the bitmap */
     pread(fd, &bitmap, num_blocks / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_block_bitmap)); /* read bitmap from disk */
     int index = 0;
 
@@ -122,7 +144,7 @@ void print_free_blocks()
 
 void print_free_inodes()
 {
-    unsigned char bitmap[num_inodes / BYTE_SIZE];                                           /* allocate memory for the bitmap */
+    unsigned char bitmap[num_inodes / BYTE_SIZE + 1];                                           /* allocate memory for the bitmap */
     pread(fd, &bitmap, num_inodes / BYTE_SIZE, BLOCK_OFFSET(grpdes.bg_inode_bitmap)); /* read bitmap from disk */
     int index = 0;
 
@@ -187,8 +209,7 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
 
     int num_pointers = log_block_size / sizeof(int);
     int block_pointers[num_pointers];
-    pread(fd, &block_pointers, log_block_size, BLOCK_OFFSET(block_number));
-
+    pread(fd, &block_pointers, sizeof(block_pointers), BLOCK_OFFSET(block_number));
 
     int i, block;
     for (i = 0; i < num_pointers; i++)
@@ -263,23 +284,3 @@ void print_inodes()
     }
 }
 
-int main(int argc, char *argv[])
-{
-    fd = open(FILENAME, O_RDONLY);
-    if (argc != 2){
-        throwError("Wrong number of arguments", 1);
-    }
-
-    FILENAME = argv[1];
-    if ((fd = open(FILENAME, O_RDONLY)) == -1){
-        throwError("Unable to open file", 1);
-    }
-    
-    offset = BASE_OFFSET;
-    print_super_block(); //don't do recursively like Rohit did - hahahaha
-    print_group();
-    print_free_blocks();
-    print_free_inodes();
-    print_inodes();
-    return 0;
-}
