@@ -19,7 +19,7 @@ unsigned int num_inodes = 0;
 int logical_byte_offset;
 const int BYTE_SIZE = 8;
 const int BASE_OFFSET = 1024; /* location of the super-block in the first group */
-
+int startpointoff = 0;
 // Function declarations
 void print_super_block();
 void print_group();
@@ -199,11 +199,23 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
         if (type == 'd')
             return print_dirents(block_number, inode_number);
     }
-    else {
+    else 
+    {
         int num_pointers = log_block_size / sizeof(int);
         int block_pointers[num_pointers];
         pread(fd, &block_pointers, sizeof(block_pointers), BLOCK_OFFSET(block_number));
 
+	//int startpointoff = 0;
+	/*
+	if(level == 1)
+	  startpointoff += 12;
+
+	if(level == 2)
+	  startpointoff += 268;
+	
+	if(level == 3)
+	  startpointoff += 65804;
+	*/
         int i, block;
         for (i = 0; i < num_pointers; i++)
         {
@@ -216,8 +228,7 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
                 printf("INDIRECT,");
                 printf("%d,", inode_number);
                 printf("%d,", level);
-                printf("%d,", block
-                );
+                printf("%d,", i+startpointoff);
                 printf("%d,", block_number); // level of indirection
                 printf("%d\n", block);       // current block pointer
 
@@ -279,6 +290,19 @@ void print_inodes()
                 if (ifl >= 12)
                     level++;
                 int block_no = curr_in.i_block[ifl];
+		startpointoff = 0;
+
+		if(level == 1)
+		  startpointoff += 12;
+
+		if(level == 2)
+		  startpointoff += 268;
+
+		if(level == 3)
+		  startpointoff += 65804;
+
+
+
                 print_indirect(block_no, level, curr_in.i_size, inode_no + 1, 'f');
             }
         }
@@ -292,6 +316,19 @@ void print_inodes()
                 if (i >= 12)
                     level++;
                 int block_no = curr_in.i_block[i];
+		startpointoff = 0;
+
+		if(level == 1)
+		  startpointoff += 12;
+
+		if(level == 2)
+		  startpointoff += 268;
+
+		if(level == 3)
+		  startpointoff += 65804;
+
+
+
                 print_indirect(block_no, level, curr_in.i_size, inode_no + 1, 'd');
             }
         }
