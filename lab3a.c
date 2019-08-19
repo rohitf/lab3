@@ -164,20 +164,20 @@ void print_dirents(int block, int inode_number)
     if (block == 0)
         return; // Unallocated block
 
-        lseek(fd, BLOCK_OFFSET(block), SEEK_SET);
+    lseek(fd, BLOCK_OFFSET(block), SEEK_SET);
     read(fd, entries, log_block_size);
-    
+
     curr_entry = (struct ext2_dir_entry *)entries;
     int entry_offset = 0;
-    
-    while((unsigned int)entry_offset < log_block_size)     //size is less than the total size of the inode
+
+    while ((unsigned int)entry_offset < log_block_size) //size is less than the total size of the inode
     {
-        if(curr_entry->inode == 0)
+        if (curr_entry->inode == 0)
             break;
 
-        char file_name[EXT2_NAME_LEN+1];
+        char file_name[EXT2_NAME_LEN + 1];
         memcpy(file_name, curr_entry->name, curr_entry->name_len);
-        file_name[curr_entry->name_len] = 0;            /* append null char to the file name */
+        file_name[curr_entry->name_len] = 0; /* append null char to the file name */
 
         printf("DIRENT,");
         printf("%d,", inode_number);
@@ -187,20 +187,19 @@ void print_dirents(int block, int inode_number)
         printf("%d,", curr_entry->name_len);
         printf("\'%s\'\n", curr_entry->name);
         entry_offset += curr_entry->rec_len;
-        curr_entry = (void*) curr_entry + curr_entry->rec_len;      /* move to the next curr_entry */
+        curr_entry = (void *)curr_entry + curr_entry->rec_len; /* move to the next curr_entry */
     }
 }
 
 void print_indirect(int block_number, int level, int total_size, int inode_number, char type)
 {
-   
 
-  if (level == 0)
+    if (level == 0)
     {
-      if(type=='d')
-        return print_dirents(block_number, inode_number);
-      else
-	return;
+        if (type == 'd')
+            return print_dirents(block_number, inode_number);
+        else
+            return;
     }
 
     int num_pointers = log_block_size / sizeof(int);
@@ -210,16 +209,16 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
     int i, block;
     for (i = 0; i < num_pointers; i++)
     {
-     
+
         block = block_pointers[i];
 
         if (block != 0)
         {
-	  //printf("IN BLOCK NOT EQUALS 0: %d\n", block);
+            //printf("IN BLOCK NOT EQUALS 0: %d\n", block);
             printf("INDIRECT,");
             printf("%d,", inode_number);
             printf("%d,", level);
-            printf("%d,", block*log_block_size);
+            printf("%d,", block * log_block_size);
             printf("%d,", block_number); // level of indirection
             printf("%d\n", block);       // current block pointer
 
@@ -236,7 +235,7 @@ void print_inode_details(char type, struct ext2_inode curr_in, int in)
 
     printf("INODE,");
     printf("%d,", in + 1);
-    printf("%c,", type);                              // inode #
+    printf("%c,", type);                       // inode #
     printf("%o,", ((curr_in.i_mode) & 0xFFF)); // mode, lower 12 bits
     printf("%d,", curr_in.i_uid);              // owner
     printf("%d,", curr_in.i_gid);              // group
@@ -274,14 +273,14 @@ void print_inodes()
         if (S_ISREG(curr_in.i_mode) && curr_in.i_links_count > 0)
         {
             print_inode_details('f', curr_in, inode_no);
-	    int ifl, level = 0;
+            int ifl, level = 0;
             for (ifl = 0; ifl < EXT2_N_BLOCKS; ifl++)
-	      {
+            {
                 if (ifl >= 12)
-		  level++;
+                    level++;
                 int block_no = curr_in.i_block[ifl];
                 print_indirect(block_no, level, curr_in.i_size, inode_no + 1, 'f');
-	      }
+            }
         }
         else if (S_ISDIR(curr_in.i_mode) && curr_in.i_links_count > 0) // if directory
         {
