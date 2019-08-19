@@ -65,12 +65,6 @@ int LEVEL_OFFSET(int level)
 // Print functions
 void print_group()
 {
-
-    /*calculate number of block groups on the disk */
-    // unsigned int num_groups = 1 + (super.s_blocks_count - 1) / super.s_blocks_per_group;
-    /* calculate size of the group descriptor list in bytes */
-    // unsigned int num_group_desc = num_groups * sizeof(struct ext2_group_desc);
-
     pread(fd, &grpdes, sizeof(grpdes), offset); 
     offset += sizeof(grpdes);
 
@@ -105,7 +99,7 @@ void print_super_block()
     num_inodes = super.s_inodes_count;
     num_blocks = super.s_blocks_count;
 
-    // Set useful vars
+    // Set useful globals
     log_block_size = 1024 << super.s_log_block_size; /* calculate block size in bytes */
     num_pointers = log_block_size / sizeof(int);
 
@@ -164,6 +158,7 @@ void print_free_inodes()
     }
 }
 
+// inspired by http://cs.smith.edu/~nhowe/Teaching/csc262/oldlabs/ext2.html
 // goes to data block and prints directory entries within that 1 block
 void print_dirents(int block, int inode_number)
 {
@@ -173,8 +168,7 @@ void print_dirents(int block, int inode_number)
     if (block == 0)
         return; // Unallocated block
 
-    lseek(fd, BLOCK_OFFSET(block), SEEK_SET);
-    read(fd, entries, log_block_size);
+    pread(fd, entries, log_block_size, BLOCK_OFFSET(block));
 
     curr_entry = (struct ext2_dir_entry *)entries;
     int entry_offset = 0;
@@ -224,9 +218,9 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
                 //printf("IN BLOCK NOT EQUALS 0: %d\n", block);
                 printf("INDIRECT,");
                 printf("%d,", inode_number);
-                printf("%d,", level);
+                printf("%d,", level); // level of indirection
                 printf("%d,", i + start_offset);
-                printf("%d,", block_number); // level of indirection
+                printf("%d,", block_number); 
                 printf("%d\n", block);       // current block pointer
 
                 print_indirect(block, level - 1, total_size, inode_number, type);
@@ -263,11 +257,6 @@ void print_inode_details(char type, struct ext2_inode curr_in, int in)
 
 void print_inodes()
 {
-    /* number of inodes per block */
-    // unsigned int inodes_per_block = log_block_size / sizeof(struct ext2_inode);
-    /* size in blocks of the inode table */
-    // unsigned int itable_blocks = super.s_inodes_per_group / inodes_per_block;
-
     struct ext2_inode inode_list[num_inodes];
     offset = BLOCK_OFFSET(grpdes.bg_inode_table);
     pread(fd, &inode_list, sizeof(inode_list), offset); 
@@ -320,7 +309,7 @@ int main(int argc, char *argv[])
     {
         throwError("Wrong number of arguments", 1);
     }
-    
+
     FILENAME = argv[1];
     offset = BASE_OFFSET;
 
