@@ -320,8 +320,8 @@ int main(int argc, char *argv[])
     {
         throwError("Wrong number of arguments", 1);
     }
-    
     FILENAME = argv[1];
+
     offset = BASE_OFFSET;
 
     if ((fd = open(FILENAME, O_RDONLY)) == -1)

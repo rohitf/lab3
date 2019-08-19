@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "*.hjs": "handlebars",
+        "*.geojson": "json",
+        "*.ml": "ocaml",
+        "time.h": "c",
+        "math.h": "c"
+    }
+}

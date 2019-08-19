@@ -6,6 +6,11 @@ DONE Not working on lnxsrv
 6. Use of BYTE_SIZE
 7. Indirection implementation
 8. Weird block sizes (that aren't power of 2)? - any rounding? ceil/truncate
-9. What to do with files?
+9. What to do with files? Just print id  blocks right?
+10. Edge case handling
+    - unallocated blocks containing valid data
+    - files with data beyond their length
+    - files with long names
+    - files with syntactically strange or non-ASCII names
 10.Symlinks?
 11. pread returns too less size
