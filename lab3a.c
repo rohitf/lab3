@@ -198,31 +198,31 @@ void print_indirect(int block_number, int level, int total_size, int inode_numbe
     {
         if (type == 'd')
             return print_dirents(block_number, inode_number);
-        else
-            return;
     }
+    else {
+        int num_pointers = log_block_size / sizeof(int);
+        int block_pointers[num_pointers];
+        pread(fd, &block_pointers, sizeof(block_pointers), BLOCK_OFFSET(block_number));
 
-    int num_pointers = log_block_size / sizeof(int);
-    int block_pointers[num_pointers];
-    pread(fd, &block_pointers, sizeof(block_pointers), BLOCK_OFFSET(block_number));
-
-    int i, block;
-    for (i = 0; i < num_pointers; i++)
-    {
-
-        block = block_pointers[i];
-
-        if (block != 0)
+        int i, block;
+        for (i = 0; i < num_pointers; i++)
         {
-            //printf("IN BLOCK NOT EQUALS 0: %d\n", block);
-            printf("INDIRECT,");
-            printf("%d,", inode_number);
-            printf("%d,", level);
-            printf("%d,", block * log_block_size);
-            printf("%d,", block_number); // level of indirection
-            printf("%d\n", block);       // current block pointer
 
-            return print_indirect(block, level - 1, total_size, inode_number, type);
+            block = block_pointers[i];
+
+            if (block != 0)
+            {
+                //printf("IN BLOCK NOT EQUALS 0: %d\n", block);
+                printf("INDIRECT,");
+                printf("%d,", inode_number);
+                printf("%d,", level);
+                printf("%d,", block
+                );
+                printf("%d,", block_number); // level of indirection
+                printf("%d\n", block);       // current block pointer
+
+                print_indirect(block, level - 1, total_size, inode_number, type);
+            }
         }
     }
 }
