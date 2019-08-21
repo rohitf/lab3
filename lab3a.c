@@ -1,3 +1,7 @@
+// ID: 904599241, 505458185
+// EMAIL: sriramsonti1997@gmail.com, rohitfalor@g.ucla.edu
+// NAME: Venkata Sai Sriram Sonti, Rohit Falor
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
