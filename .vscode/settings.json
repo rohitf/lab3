@@ -4,6 +4,8 @@
         "*.geojson": "json",
         "*.ml": "ocaml",
         "time.h": "c",
-        "math.h": "c"
+        "math.h": "c",
+        "types.h": "c",
+        "stdlib.h": "c"
     }
 }

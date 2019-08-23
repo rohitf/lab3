@@ -1,0 +1,8 @@
+1. Date/time in output differs?
+2. How is rec_len calculated by img file? Seems fake...
+3. Not working on lnxsrv
+4. Only print directories or files also?
+5. Recursively parse subdirectories?
+6. Use of BYTE_SIZE
+7. Indirection implementation
+8. Weird block sizes (that aren't power of 2)? - any rounding? ceil/truncate
