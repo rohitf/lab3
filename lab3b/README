@@ -1,0 +1,30 @@
+ID: 904599241, 505458185
+EMAIL: sriramsonti1997@gmail.com, rohitfalor@g.ucla.edu
+NAME: Venkata Sai Sriram Sonti, Rohit Falor
+SLIPDAYS: 0
+
+
+
+lab3a.c contains our code for navigating through the Ext2 filesystem and printing summaries of its contents
+including Superblock and Group summary, list of free blocks, list of free inodes, list of indoes with 
+directory entries and indirect entries at those inodes.
+
+lab3a.c #includes the header file ext2_fs.h
+
+
+
+Makefile has the targets:
+
+default - for compiling the lab3a.c to an executable lab3a 
+dist    - for creating a tarball lab3a-904599241.tar.gz with lab3a.c, the Makefile and the README
+clean   - for getting rid of the executable and the tarball
+
+
+
+Sources:
+- TA Diyu slides
+- GMTIME: https://www.epochconverter.com/programming/c
+- Book on EXT2: https://www.nongnu.org/ext2-doc/ext2.html
+- Navigating file system + code snippets: http://cs.smith.edu/~nhowe/Teaching/csc262/oldlabs/ext2.html
+- http://www.grymoire.com/Unix/Inodes.html
+- Piazza posts
