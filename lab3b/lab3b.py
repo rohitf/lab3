@@ -27,7 +27,7 @@ if __name__ == "__main__":
                                             'num_free_inodes', 'bg_block_bitmap', 'bg_inode_bitmap', 'bg_inode_table'))
 
     Dirent = collections.namedtuple(
-        'Dirent', ('direntinode', 'entry_offset', 'entry_inode', 'rec_len', 'name_len', 'entry_name'))
+        'Dirent', ('dir_inode', 'entry_offset', 'entry_inode', 'rec_len', 'name_len', 'entry_name'))
 
     Inode = collections.namedtuple('Inode', ('inode_num', 'file_type', 'mode', 'owner', 'group', 'link_count',
                                             'change_time', 'mod_time', 'access_time', 'file_size', 'blocks_consumed', 'block_pointers'))
@@ -225,15 +225,15 @@ if __name__ == "__main__":
                 print(f"INODE {inode.inode_num} HAS {direntReferencedInodeNums[int(inode.inode_num)]} LINKS BUT LINKCOUNT IS {inode.link_count}")
     
     
-    # for inode in direntReferencedInodeNums.keys():
-    #     if (inode < 0) or (inode > SuperBlockData.inode_count+1):
-    #         print(f"DIRECTORY INODE 2 NAME abc INVALID INODE 26")
-
-
-
     for dirent in DirentData:
         if (int(dirent.entry_inode) < 0) or (int(dirent.entry_inode) > SuperBlockData.inode_count+1):
-            print(f"DIRECTORY INODE {int(dirent.direntinode)} NAME {dirent.entry_name} INVALID INODE {int(dirent.entry_inode)}")
+            print(f"DIRECTORY INODE {int(dirent.dir_inode)} NAME {dirent.entry_name} INVALID INODE {int(dirent.entry_inode)}")
         elif ((int(dirent.entry_inode) not in AllocatedInodeNums)):
-            print(f"DIRECTORY INODE {int(dirent.direntinode)} NAME {dirent.entry_name} UNALLOCATED INODE {int(dirent.entry_inode)}")
-            
+            print(f"DIRECTORY INODE {int(dirent.dir_inode)} NAME {dirent.entry_name} UNALLOCATED INODE {int(dirent.entry_inode)}")
+    
+    for dirent in DirentData:
+        if (dirent.entry_name == "'.'"):
+            for dirent2 in DirentData:
+                if(dirent2.entry_name == "'..'" and dirent2.dir_inode == dirent.dir_inode):
+                    if(int(dirent2.entry_inode) > int(dirent.entry_inode)):
+                        print(f"DIRECTORY INODE {dirent2.dir_inode} NAME {dirent2.entry_name} LINK TO INODE {dirent2.entry_inode} SHOULD BE {dirent.entry_inode}")
