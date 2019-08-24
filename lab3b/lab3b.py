@@ -8,9 +8,7 @@ import csv
 from typing import Dict
 import collections
 from pprint import pprint
-
 from enum import Enum
-
 
 class BTYPE(Enum):
     DIRECT = ""
@@ -168,20 +166,12 @@ if __name__ == "__main__":
             InvalidBlocks.add(block_num)
             refs = block_data.references
             for curr_ref in refs:
-                off = 0
-                if(curr_ref[1] == ""):
-                    off = 0
-                else:
-                    off = 0
                 print(
                     f"INVALID{curr_ref[1].value} BLOCK {block_num} IN INODE {curr_ref[0]} AT OFFSET {curr_ref[2]}")
 
         if(block_data.reserved):
             refs = block_data.references
             for curr_ref in refs:
-                off = 0
-                if(curr_ref[1] == ""):
-                    off = 0
                 print(
                     f"RESERVED{curr_ref[1].value} BLOCK {block_num} IN INODE {curr_ref[0]} AT OFFSET {curr_ref[2]}")
 
