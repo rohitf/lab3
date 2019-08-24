@@ -201,9 +201,9 @@ if __name__ == "__main__":
         if (int(inode.inode_num) in IFREE and is_inode_allocated(inode)):
             print(f"ALLOCATED INODE {inode.inode_num} ON FREELIST")
     
-    # AllocatedInodeNums = []
-    # for inode in InodeData:
-    #     AllocatedInodeNums.append(int(inode.inode_num))
+    AllocatedInodeNums = []
+    for inode in InodeData:
+        AllocatedInodeNums.append(int(inode.inode_num))
         
     for inode in ALL_INODES:
         if (inode not in IFREE and not is_inode_allocated(inode)):
@@ -229,6 +229,11 @@ if __name__ == "__main__":
     #     if (inode < 0) or (inode > SuperBlockData.inode_count+1):
     #         print(f"DIRECTORY INODE 2 NAME abc INVALID INODE 26")
 
+
+
     for dirent in DirentData:
         if (int(dirent.entry_inode) < 0) or (int(dirent.entry_inode) > SuperBlockData.inode_count+1):
-            print(f"DIRECTORY INODE 2 NAME {dirent.entry_name} INVALID INODE 26")
+            print(f"DIRECTORY INODE {int(dirent.direntinode)} NAME {dirent.entry_name} INVALID INODE {int(dirent.entry_inode)}")
+        elif ((int(dirent.entry_inode) not in AllocatedInodeNums)):
+            print(f"DIRECTORY INODE {int(dirent.direntinode)} NAME {dirent.entry_name} UNALLOCATED INODE {int(dirent.entry_inode)}")
+            
