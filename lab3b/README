@@ -23,8 +23,9 @@ clean   - for getting rid of the executable and the tarball
 
 Sources:
 - TA Diyu slides
-- GMTIME: https://www.epochconverter.com/programming/c
+- https://stackoverflow.com/questions/10247815/what-is-a-good-pythonic-way-of-finding-duplicate-objects
 - Book on EXT2: https://www.nongnu.org/ext2-doc/ext2.html
 - Navigating file system + code snippets: http://cs.smith.edu/~nhowe/Teaching/csc262/oldlabs/ext2.html
 - http://www.grymoire.com/Unix/Inodes.html
+- CSV read: https://realpython.com/python-csv/
 - Piazza posts
