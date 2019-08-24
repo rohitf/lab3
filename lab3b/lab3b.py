@@ -27,7 +27,7 @@ if __name__ == "__main__":
                                             'num_free_inodes', 'bg_block_bitmap', 'bg_inode_bitmap', 'bg_inode_table'))
 
     Dirent = collections.namedtuple(
-        'Dirent', ('dientnode', 'entry_offset', 'entry_inode', 'rec_len', 'name_len', 'entry_name'))
+        'Dirent', ('direntinode', 'entry_offset', 'entry_inode', 'rec_len', 'name_len', 'entry_name'))
 
     Inode = collections.namedtuple('Inode', ('inode_num', 'file_type', 'mode', 'owner', 'group', 'link_count',
                                             'change_time', 'mod_time', 'access_time', 'file_size', 'blocks_consumed', 'block_pointers'))
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     BFREE = []
     IFREE = []
     DirentData = []
-    InodeData = {}
+    InodeData = []
     IndirectData = []
 
     with open(FILENAME) as csv_file:
@@ -60,7 +60,7 @@ if __name__ == "__main__":
                 DirentData.append(Dirent(*row[1:]))
             elif(row[0] == "INODE"):
                 temp_inode = Inode(*row[1:12], block_pointers=map(int, row[12:]))
-                InodeData[int(temp_inode.inode_num)] = temp_inode
+                InodeData.append(temp_inode)
             elif(row[0] == "INDIRECT"):
                 IndirectData.append(Indirect(*map(int, row[1:])))
 
@@ -114,9 +114,16 @@ if __name__ == "__main__":
         elif index == 12:
             return BTYPE.SINGLE
         return BTYPE.DIRECT
+
+    def is_inode_allocated(inode):
+        for inode in InodeData:
+            if (inode.file_type != '0'):
+                return True
+    
+    ALL_INODES = [*range(SuperBlockData.first_inode, SuperBlockData.inode_count+1)]
         
     # Iterate Inodes
-    for inode in InodeData.values():
+    for inode in InodeData:
         for index, block_num in enumerate(list(inode.block_pointers)):
             if(block_num != 0):
                 block_type = get_block_type(index)
@@ -190,8 +197,34 @@ if __name__ == "__main__":
         if (block_num not in Blocks and block_num not in BFREE):
             print(f"UNREFERENCED BLOCK {block_num}")
 
-    # pprint(IndirectData)
-
-
-
-
+    for inode in InodeData:
+        if (int(inode.inode_num) in IFREE and is_inode_allocated(inode)):
+            print(f"ALLOCATED INODE {inode.inode_num} ON FREELIST")
+    
+    AllocatedInodeNums = []
+    for inode in InodeData:
+        AllocatedInodeNums.append(int(inode.inode_num))
+        
+    for inode in ALL_INODES:
+        if (inode not in IFREE and inode not in AllocatedInodeNums):
+                print(f"UNALLOCATED INODE {inode} NOT ON FREELIST")
+                
+    direntReferencedInodeNums: Dict[int, int] = {}
+    
+    for dirent in DirentData:
+        if int(dirent.entry_inode) not in direntReferencedInodeNums.keys():
+            direntReferencedInodeNums[int(dirent.entry_inode)] = 1
+        else:
+            direntReferencedInodeNums[int(dirent.entry_inode)] += 1
+        
+    for inode in InodeData:
+        if int(inode.inode_num) not in direntReferencedInodeNums and int(inode.link_count) > 0 and inode.file_type != '0':
+            print(f"INODE {inode.inode_num} HAS 0 LINKS BUT LINKCOUNT IS {inode.link_count}")
+        else:
+            if direntReferencedInodeNums[int(inode.inode_num)] != int(inode.link_count) and inode.file_type != '0':
+                print(f"INODE {inode.inode_num} HAS {direntReferencedInodeNums[int(inode.inode_num)]} LINKS BUT LINKCOUNT IS {inode.link_count}")
+    
+    
+    for inode in direntReferencedInodeNums.keys():
+        if (inode < 0) or (inode > SuperBlockData.inode_count+1):
+            print(f"DIRECTORY INODE 2 NAME abc INVALID INODE 26")
