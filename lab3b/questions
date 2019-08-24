@@ -1,0 +1,4 @@
+1. Reserved file blocks calculation
+2. Inode table addr. vs first_free Inode
+3. Checking file type "0"
+4. ".." method
