@@ -10,11 +10,14 @@ import collections
 from pprint import pprint
 
 from enum import Enum
+
+
 class BTYPE(Enum):
-   DIRECT = ""
-   SINGLE = "INDIRECT"
-   DOUBLE = "DOUBLE INDIRECT"
-   TRIPLE = "TRIPLE INDIRECT"
+    DIRECT = ""
+    SINGLE = " INDIRECT"
+    DOUBLE = " DOUBLE INDIRECT"
+    TRIPLE = " TRIPLE INDIRECT"
+
 
 if __name__ == "__main__":
     FILENAME = sys.argv[1]
@@ -24,16 +27,16 @@ if __name__ == "__main__":
         'SuperBlock', ('block_count', 'inode_count', 'block_size', 'inode_size', 'blocks_per_group', 'inodes_per_group', 'first_inode'))
 
     Group = collections.namedtuple('Group', ('group_num', 'num_blocks', 'num_inodes', 'num_free_blocks',
-                                            'num_free_inodes', 'bg_block_bitmap', 'bg_inode_bitmap', 'bg_inode_table'))
+                                             'num_free_inodes', 'bg_block_bitmap', 'bg_inode_bitmap', 'bg_inode_table'))
 
     Dirent = collections.namedtuple(
         'Dirent', ('dir_inode', 'entry_offset', 'entry_inode', 'rec_len', 'name_len', 'entry_name'))
 
     Inode = collections.namedtuple('Inode', ('inode_num', 'file_type', 'mode', 'owner', 'group', 'link_count',
-                                            'change_time', 'mod_time', 'access_time', 'file_size', 'blocks_consumed', 'block_pointers'))
+                                             'change_time', 'mod_time', 'access_time', 'file_size', 'blocks_consumed', 'block_pointers'))
 
     Indirect = collections.namedtuple('Indirect', ('owner_inode_num', 'indirection_level',
-                                                'logical_block_offset', 'indirect_block_num', 'referenced_block_num'))
+                                                   'logical_block_offset', 'indirect_block_num', 'referenced_block_num'))
 
     Block = collections.namedtuple(
         'Block', ('valid', 'free', 'reserved', 'references'))
@@ -59,7 +62,8 @@ if __name__ == "__main__":
             elif(row[0] == "DIRENT"):
                 DirentData.append(Dirent(*row[1:]))
             elif(row[0] == "INODE"):
-                temp_inode = Inode(*row[1:12], block_pointers=map(int, row[12:]))
+                temp_inode = Inode(
+                    *row[1:12], block_pointers=map(int, row[12:]))
                 InodeData.append(temp_inode)
             elif(row[0] == "INDIRECT"):
                 IndirectData.append(Indirect(*map(int, row[1:])))
@@ -76,7 +80,7 @@ if __name__ == "__main__":
 
         # free block bitmap, inode bitmap, inode table
         inode_table_space = (int(SuperBlockData.inode_size) *
-                            int(SuperBlockData.inode_count))/(int(SuperBlockData.block_size))
+                             int(SuperBlockData.inode_count))/(int(SuperBlockData.block_size))
         ReservedBlocks.add(int(GroupData.bg_block_bitmap))
         ReservedBlocks.add(int(GroupData.bg_inode_bitmap))
         ReservedBlocks.update(range(GroupData.bg_inode_table,
@@ -91,17 +95,14 @@ if __name__ == "__main__":
     def is_valid(block_num: int):
         return 0 < block_num <= SuperBlockData.block_count
 
-
     def is_reserved(block_num: int):
         return (block_num in ReservedBlocks)
-
 
     def get_block_offset(level: int):
         num_pointers = SuperBlockData.block_size/4
         if level <= 0:
             return 12
         return int(pow(num_pointers, level) + get_block_offset(level - 1))
-
 
     def is_free(block_num: int):
         return (block_num in BFREE)
@@ -119,9 +120,10 @@ if __name__ == "__main__":
         for inode in InodeData:
             if (inode.file_type != '0'):
                 return True
-    
-    ALL_INODES = [*range(SuperBlockData.first_inode, SuperBlockData.inode_count+1)]
-        
+
+    ALL_INODES = [*range(SuperBlockData.first_inode,
+                         SuperBlockData.inode_count+1)]
+
     # Iterate Inodes
     for inode in InodeData:
         for index, block_num in enumerate(list(inode.block_pointers)):
@@ -134,15 +136,16 @@ if __name__ == "__main__":
 
                 if block_num in Blocks:
                     block = Blocks[block_num]
-                    block.references.append((inode.inode_num, block_type, offset))
+                    block.references.append(
+                        (inode.inode_num, block_type, offset))
                 else:
                     Blocks[block_num] = Block(references=[(inode.inode_num, block_type, offset)], free=is_free(block_num),
-                                                valid=is_valid(block_num), reserved=is_reserved(block_num))
+                                              valid=is_valid(block_num), reserved=is_reserved(block_num))
 
     # Iterate Indirect Blocks
     for ind_block in IndirectData:
         block_num = ind_block.referenced_block_num
-        
+
         if(block_num != 0):
             block_type = get_block_type(ind_block.indirection_level + 11)
             offset = ind_block.logical_block_offset
@@ -154,7 +157,7 @@ if __name__ == "__main__":
 
             else:
                 Blocks[block_num] = Block(references=[(inode_num, block_type, offset)], free=is_free(block_num),
-                                            valid=is_valid(block_num), reserved=is_reserved(block_num))
+                                          valid=is_valid(block_num), reserved=is_reserved(block_num))
 
     # pprint(Blocks)
 
@@ -170,22 +173,25 @@ if __name__ == "__main__":
                     off = 0
                 else:
                     off = 0
-                print(f"INVALID{curr_ref[1].value} BLOCK {block_num} IN INODE {curr_ref[0]} AT OFFSET {curr_ref[2]}")
-        
+                print(
+                    f"INVALID{curr_ref[1].value} BLOCK {block_num} IN INODE {curr_ref[0]} AT OFFSET {curr_ref[2]}")
+
         if(block_data.reserved):
             refs = block_data.references
             for curr_ref in refs:
                 off = 0
                 if(curr_ref[1] == ""):
                     off = 0
-                print(f"RESERVED{curr_ref[1].value} BLOCK {block_num} IN INODE {curr_ref[0]} AT OFFSET {curr_ref[2]}")
-        
+                print(
+                    f"RESERVED{curr_ref[1].value} BLOCK {block_num} IN INODE {curr_ref[0]} AT OFFSET {curr_ref[2]}")
+
         if(len(block_data.references) > 1):
             refs = block_data.references
             for curr_ref in refs:
-                print(f"DUPLICATE{curr_ref[1].value} BLOCK {block_num} IN INODE {curr_ref[0]} AT OFFSET {curr_ref[2]}")
+                print(
+                    f"DUPLICATE{curr_ref[1].value} BLOCK {block_num} IN INODE {curr_ref[0]} AT OFFSET {curr_ref[2]}")
 
-        # A block that is allocated to some file might also appear on the free list. 
+        # A block that is allocated to some file might also appear on the free list.
         if (block_num in BFREE):
             print(f"ALLOCATED BLOCK {block_num} ON FREELIST")
 
@@ -200,40 +206,61 @@ if __name__ == "__main__":
     for inode in InodeData:
         if (int(inode.inode_num) in IFREE and is_inode_allocated(inode)):
             print(f"ALLOCATED INODE {inode.inode_num} ON FREELIST")
-    
+
     AllocatedInodeNums = []
     for inode in InodeData:
         AllocatedInodeNums.append(int(inode.inode_num))
-        
+
     for inode in ALL_INODES:
-        if (inode not in IFREE and not is_inode_allocated(inode)):
+        if (inode not in IFREE and inode not in AllocatedInodeNums):
                 print(f"UNALLOCATED INODE {inode} NOT ON FREELIST")
-                
+
     direntReferencedInodeNums: Dict[int, int] = {}
-    
+
     for dirent in DirentData:
         if int(dirent.entry_inode) not in direntReferencedInodeNums.keys():
             direntReferencedInodeNums[int(dirent.entry_inode)] = 1
         else:
             direntReferencedInodeNums[int(dirent.entry_inode)] += 1
-        
+
     for inode in InodeData:
         if int(inode.inode_num) not in direntReferencedInodeNums and int(inode.link_count) > 0 and inode.file_type != '0':
-            print(f"INODE {inode.inode_num} HAS 0 LINKS BUT LINKCOUNT IS {inode.link_count}")
+            print(
+                f"INODE {inode.inode_num} HAS 0 LINKS BUT LINKCOUNT IS {inode.link_count}")
         else:
             if direntReferencedInodeNums[int(inode.inode_num)] != int(inode.link_count) and inode.file_type != '0':
-                print(f"INODE {inode.inode_num} HAS {direntReferencedInodeNums[int(inode.inode_num)]} LINKS BUT LINKCOUNT IS {inode.link_count}")
-    
-    
+                print(
+                    f"INODE {inode.inode_num} HAS {direntReferencedInodeNums[int(inode.inode_num)]} LINKS BUT LINKCOUNT IS {inode.link_count}")
+
     for dirent in DirentData:
         if (int(dirent.entry_inode) < 0) or (int(dirent.entry_inode) > SuperBlockData.inode_count+1):
-            print(f"DIRECTORY INODE {int(dirent.dir_inode)} NAME {dirent.entry_name} INVALID INODE {int(dirent.entry_inode)}")
+            print(
+                f"DIRECTORY INODE {int(dirent.dir_inode)} NAME {dirent.entry_name} INVALID INODE {int(dirent.entry_inode)}")
         elif ((int(dirent.entry_inode) not in AllocatedInodeNums)):
-            print(f"DIRECTORY INODE {int(dirent.dir_inode)} NAME {dirent.entry_name} UNALLOCATED INODE {int(dirent.entry_inode)}")
-    
+            print(
+                f"DIRECTORY INODE {int(dirent.dir_inode)} NAME {dirent.entry_name} UNALLOCATED INODE {int(dirent.entry_inode)}")
+
+    # Check parent and child links
+    double_dots = []
+    files = {}
+
     for dirent in DirentData:
-        if (dirent.entry_name == "'.'"):
-            for dirent2 in DirentData:
-                if(dirent2.entry_name == "'..'" and dirent2.dir_inode == dirent.dir_inode):
-                    if(int(dirent2.entry_inode) > int(dirent.entry_inode)):
-                        print(f"DIRECTORY INODE {dirent2.dir_inode} NAME {dirent2.entry_name} LINK TO INODE {dirent2.entry_inode} SHOULD BE {dirent.entry_inode}")
+        if dirent.entry_name == "'.'":
+            if dirent.entry_inode != dirent.dir_inode:
+                print(
+                    f"DIRECTORY INODE {dirent.dir_inode} NAME {dirent.entry_name} LINK TO INODE {dirent.entry_inode} SHOULD BE {dirent.dir_inode}")
+        elif dirent.entry_name == "'..'":
+            double_dots.append(dirent)
+        else:
+            files[dirent.entry_inode] = dirent.dir_inode
+
+    for backlink in double_dots:
+        (child, parent) = backlink.dir_inode, backlink.entry_inode
+
+        if child in files:
+            if files[child] != parent:
+                print(
+                    f"DIRECTORY INODE {child} NAME '..' LINK TO INODE {backlink.entry_inode} SHOULD BE {files[child]}")
+        elif parent != child:
+            print(
+                f"DIRECTORY INODE {child} NAME '..' LINK TO INODE {backlink.entry_inode} SHOULD BE {child}")

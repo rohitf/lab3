@@ -1,0 +1,5 @@
+# robots.txt for http://www.cs.ucla.edu/
+
+User-agent: *
+Disallow: /r_share1
+Disallow: /cgi-bin
