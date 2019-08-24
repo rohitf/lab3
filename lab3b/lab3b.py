@@ -16,55 +16,55 @@ class BTYPE(Enum):
     DOUBLE = " DOUBLE INDIRECT"
     TRIPLE = " TRIPLE INDIRECT"
 
+# Define named data collections
+SuperBlock = collections.namedtuple(
+    'SuperBlock', ('block_count', 'inode_count', 'block_size', 'inode_size', 'blocks_per_group', 'inodes_per_group', 'first_inode'))
 
-if __name__ == "__main__":
-    FILENAME = sys.argv[1]
+Group = collections.namedtuple('Group', ('group_num', 'num_blocks', 'num_inodes', 'num_free_blocks',
+                                            'num_free_inodes', 'bg_block_bitmap', 'bg_inode_bitmap', 'bg_inode_table'))
 
-    # Define named data collections
-    SuperBlock = collections.namedtuple(
-        'SuperBlock', ('block_count', 'inode_count', 'block_size', 'inode_size', 'blocks_per_group', 'inodes_per_group', 'first_inode'))
+Dirent = collections.namedtuple(
+    'Dirent', ('dir_inode', 'entry_offset', 'entry_inode', 'rec_len', 'name_len', 'entry_name'))
 
-    Group = collections.namedtuple('Group', ('group_num', 'num_blocks', 'num_inodes', 'num_free_blocks',
-                                             'num_free_inodes', 'bg_block_bitmap', 'bg_inode_bitmap', 'bg_inode_table'))
+Inode = collections.namedtuple('Inode', ('inode_num', 'file_type', 'mode', 'owner', 'group', 'link_count',
+                                            'change_time', 'mod_time', 'access_time', 'file_size', 'blocks_consumed', 'block_pointers'))
 
-    Dirent = collections.namedtuple(
-        'Dirent', ('dir_inode', 'entry_offset', 'entry_inode', 'rec_len', 'name_len', 'entry_name'))
+Indirect = collections.namedtuple('Indirect', ('owner_inode_num', 'indirection_level',
+                                                'logical_block_offset', 'indirect_block_num', 'referenced_block_num'))
 
-    Inode = collections.namedtuple('Inode', ('inode_num', 'file_type', 'mode', 'owner', 'group', 'link_count',
-                                             'change_time', 'mod_time', 'access_time', 'file_size', 'blocks_consumed', 'block_pointers'))
+Block = collections.namedtuple(
+    'Block', ('valid', 'free', 'reserved', 'references'))
 
-    Indirect = collections.namedtuple('Indirect', ('owner_inode_num', 'indirection_level',
-                                                   'logical_block_offset', 'indirect_block_num', 'referenced_block_num'))
+BFREE = []
+IFREE = []
+DirentData = []
+InodeData = []
+IndirectData = []
 
-    Block = collections.namedtuple(
-        'Block', ('valid', 'free', 'reserved', 'references'))
-
-    BFREE = []
-    IFREE = []
-    DirentData = []
-    InodeData = []
-    IndirectData = []
-
-    with open(FILENAME) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        line_count = 0
-        for row in csv_reader:
-            if(row[0] == "SUPERBLOCK"):
-                SuperBlockData = SuperBlock(*map(int, row[1:]))
-            elif(row[0] == "GROUP"):
-                GroupData = Group(*map(int, row[1:]))
-            elif(row[0] == "BFREE"):
-                BFREE.append(int(row[1]))
-            elif(row[0] == "IFREE"):
-                IFREE.append(int(row[1]))
-            elif(row[0] == "DIRENT"):
-                DirentData.append(Dirent(*row[1:]))
-            elif(row[0] == "INODE"):
-                temp_inode = Inode(
-                    *row[1:12], block_pointers=map(int, row[12:]))
-                InodeData.append(temp_inode)
-            elif(row[0] == "INDIRECT"):
-                IndirectData.append(Indirect(*map(int, row[1:])))
+def main(FILENAME):
+    try:
+        with open(FILENAME) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            line_count = 0
+            for row in csv_reader:
+                if(row[0] == "SUPERBLOCK"):
+                    SuperBlockData = SuperBlock(*map(int, row[1:]))
+                elif(row[0] == "GROUP"):
+                    GroupData = Group(*map(int, row[1:]))
+                elif(row[0] == "BFREE"):
+                    BFREE.append(int(row[1]))
+                elif(row[0] == "IFREE"):
+                    IFREE.append(int(row[1]))
+                elif(row[0] == "DIRENT"):
+                    DirentData.append(Dirent(*row[1:]))
+                elif(row[0] == "INODE"):
+                    temp_inode = Inode(
+                        *row[1:12], block_pointers=map(int, row[12:]))
+                    InodeData.append(temp_inode)
+                elif(row[0] == "INDIRECT"):
+                    IndirectData.append(Indirect(*map(int, row[1:])))
+    except EnvironmentError:
+        sys.exit("File not found")
 
     # pprint(SuperBlockData)
     # pprint(GroupData)
@@ -254,3 +254,11 @@ if __name__ == "__main__":
         elif parent != child:
             print(
                 f"DIRECTORY INODE {child} NAME '..' LINK TO INODE {backlink.entry_inode} SHOULD BE {child}")
+
+
+if __name__ == "__main__":
+    if len(sys.argv != 1):
+        sys.exit("Incorrect number of args")
+    
+    FILENAME = sys.argv[1]
+    main(FILENAME)
