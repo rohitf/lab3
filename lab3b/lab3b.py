@@ -74,8 +74,10 @@ def main(FILENAME):
         ReservedBlocks = set()
         ReservedBlocks.add(1)  # SuperBlock
         if (SuperBlockData.block_size == 1024):
-            ReservedBlocks.add(2)
+            ReservedBlocks.add(2)  
 
+        # MISSING
+        
         # free block bitmap, inode bitmap, inode table
         inode_table_space = (int(SuperBlockData.inode_size) *
                              int(SuperBlockData.inode_count))/(int(SuperBlockData.block_size))
@@ -91,7 +93,7 @@ def main(FILENAME):
     Blocks: Dict[int, Block] = {}
 
     def is_valid(block_num: int):
-        return 0 < block_num <= SuperBlockData.block_count
+        return 0 <= block_num <= SuperBlockData.block_count
 
     def is_reserved(block_num: int):
         return (block_num in ReservedBlocks)
@@ -257,7 +259,7 @@ def main(FILENAME):
 
 
 if __name__ == "__main__":
-    if len(sys.argv != 1):
+    if len(sys.argv) != 2:
         sys.exit("Incorrect number of args")
     
     FILENAME = sys.argv[1]
